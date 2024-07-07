@@ -1,30 +1,31 @@
 #!/bin/bash
 
 function count_online_users() {
-    # นับจำนวนการเชื่อมต่อ SSH ที่ใช้งานอยู่
     ssh_online=$(ps aux | grep sshd | grep -v root | grep priv | wc -l)
-
-    # นับจำนวนการเชื่อมต่อ OpenVPN ที่ใช้งานอยู่ (ถ้ามี)
     if [[ -e /etc/openvpn/openvpn-status.log ]]; then
         openvpn_online=$(grep -c "10.8" /etc/openvpn/openvpn-status.log)
     else
         openvpn_online=0
     fi
-
-    # นับจำนวนการเชื่อมต่อ Dropbear ที่ใช้งานอยู่ (ถ้ามี)
     if [[ -e /etc/default/dropbear ]]; then
         dropbear_online=$(ps aux | grep dropbear | grep -v grep | wc -l)
-        dropbear_online=$((dropbear_online - 1))  # ลบกระบวนการ dropbear ตัวเองออก
+        dropbear_online=$((dropbear_online - 1))
     else
         dropbear_online=0
     fi
-
-    # รวมจำนวนการเชื่อมต่อทั้งหมด
     total_online=$((ssh_online + openvpn_online + dropbear_online))
-
-    # แสดงผล
     echo "จำนวนผู้ใช้ออนไลน์ทั้งหมด: $total_online"
+
+    # ตรวจสอบและสร้างไดเรกทอรีถ้ายังไม่มีอยู่
+    if [[ ! -d /var/www/html/server ]]; then
+        sudo mkdir -p /var/www/html/server
+        sudo chown -R $USER:$USER /var/www/html/server
+    fi
+
+    echo "[{\"onlines\":\"$total_online\",\"limite\":\"250\"}]" > /var/www/html/server/online_app.json
 }
 
-# เรียกใช้งานฟังก์ชัน
-count_online_users
+while true; do
+    count_online_users
+    sleep 15s
+done
