@@ -30,7 +30,7 @@ sudo chown -R $USER:$USER /var/www/html/server
 sudo systemctl restart apache2
 
 # สร้างสคริปต์เพื่อนับจำนวนผู้ใช้ออนไลน์และบันทึกลงในไฟล์ JSON
-sudo bash -c "cat <<EOF > /usr/local/bin/count_online_users.sh
+sudo bash -c 'cat <<EOF > /usr/local/bin/count_online_users.sh
 #!/bin/bash
 
 function count_online_users() {
@@ -62,16 +62,15 @@ while true; do
     count_online_users
     sleep 15s
 done
-EOF"
+EOF'
 
 # กำหนดสิทธิ์ให้สคริปต์เป็น executable
 sudo chmod +x /usr/local/bin/count_online_users.sh
 
 # สร้าง systemd service เพื่อให้สคริปต์ทำงานอัตโนมัติ
-sudo bash -c "cat <<EOF > /etc/systemd/system/count_online_users.service
+sudo bash -c 'cat <<EOF > /etc/systemd/system/count_online_users.service
 [Unit]
 Description=Count Online Users Service
-After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/count_online_users.sh
@@ -80,7 +79,7 @@ User=root
 
 [Install]
 WantedBy=multi-user.target
-EOF"
+EOF'
 
 # รีโหลด daemon ของ systemd เพื่อให้ระบบทราบเกี่ยวกับ service ใหม่
 sudo systemctl daemon-reload
