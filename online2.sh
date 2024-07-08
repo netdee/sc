@@ -71,6 +71,7 @@ sudo chmod +x /usr/local/bin/count_online_users.sh
 sudo bash -c 'cat <<EOF > /etc/systemd/system/count_online_users.service
 [Unit]
 Description=Count Online Users Service
+After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/count_online_users.sh
