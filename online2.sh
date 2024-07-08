@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# ตรวจสอบว่ามีการส่งค่าพารามิเตอร์มาหรือไม่
+# ตรวจสอบว่ามีการระบุค่า limite หรือไม่
 if [ -z "$1" ]; then
-    echo "กรุณาระบุ limite เป็นพารามิเตอร์เมื่อเรียกใช้สคริปต์นี้"
-    exit 1
+  echo "กรุณาระบุค่า limite"
+  exit 1
 fi
 
 LIMITE=$1
@@ -17,8 +17,8 @@ sudo sed -i 's/Listen 80/Listen 82/' /etc/apache2/ports.conf
 sudo bash -c 'cat <<EOF > /etc/apache2/sites-available/000-default.conf
 <VirtualHost *:82>
     DocumentRoot /var/www/html
-    ErrorLog \${APACHE_LOG_DIR}/error.log
-    CustomLog \${APACHE_LOG_DIR}/access.log combined
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
 </VirtualHost>
 EOF'
 
@@ -30,15 +30,13 @@ sudo chown -R $USER:$USER /var/www/html/server
 sudo systemctl restart apache2
 
 # สร้างสคริปต์เพื่อนับจำนวนผู้ใช้ออนไลน์และบันทึกลงในไฟล์ JSON
-sudo bash -c 'cat <<EOF > /usr/local/bin/count_online_users.sh
+sudo bash -c "cat <<EOF > /usr/local/bin/count_online_users.sh
 #!/bin/bash
-
-LIMITE=$LIMITE
 
 function count_online_users() {
     ssh_online=\$(ps aux | grep sshd | grep -v root | grep priv | wc -l)
     if [[ -e /etc/openvpn/openvpn-status.log ]]; then
-        openvpn_online=\$(grep -c "10.8" /etc/openvpn/openvpn-status.log)
+        openvpn_online=\$(grep -c '10.8' /etc/openvpn/openvpn-status.log)
     else
         openvpn_online=0
     fi
@@ -49,7 +47,7 @@ function count_online_users() {
         dropbear_online=0
     fi
     total_online=\$((ssh_online + openvpn_online + dropbear_online))
-    echo "จำนวนผู้ใช้ออนไลน์ทั้งหมด: \$total_online"
+    echo 'จำนวนผู้ใช้ออนไลน์ทั้งหมด: \$total_online'
 
     # ตรวจสอบและสร้างไดเรกทอรีถ้ายังไม่มีอยู่
     if [[ ! -d /var/www/html/server ]]; then
@@ -57,32 +55,32 @@ function count_online_users() {
         sudo chown -R \$USER:\$USER /var/www/html/server
     fi
 
-    echo "[{\"onlines\":\"\$total_online\",\"limite\":\"\$LIMITE\"}]" > /var/www/html/server/online_app.json
+    echo '[{\"onlines\":\"\$total_online\",\"limite\":\"$LIMITE\"}]' > /var/www/html/server/online_app.json
 }
 
 while true; do
     count_online_users
     sleep 15s
 done
-EOF'
+EOF"
 
 # กำหนดสิทธิ์ให้สคริปต์เป็น executable
 sudo chmod +x /usr/local/bin/count_online_users.sh
 
 # สร้าง systemd service เพื่อให้สคริปต์ทำงานอัตโนมัติ
-sudo bash -c 'cat <<EOF > /etc/systemd/system/count_online_users.service
+sudo bash -c "cat <<EOF > /etc/systemd/system/count_online_users.service
 [Unit]
 Description=Count Online Users Service
+After=network.target
 
 [Service]
-Environment="LIMITE=$LIMITE"
 ExecStart=/usr/local/bin/count_online_users.sh
 Restart=always
 User=root
 
 [Install]
 WantedBy=multi-user.target
-EOF'
+EOF"
 
 # รีโหลด daemon ของ systemd เพื่อให้ระบบทราบเกี่ยวกับ service ใหม่
 sudo systemctl daemon-reload
