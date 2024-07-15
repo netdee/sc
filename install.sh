@@ -16,7 +16,7 @@ if [[ ! $(id -u) = 0 ]]; then
   msg -bar
   print_center -ama "ERROR DE EJECUCION"
   msg -bar
-  print_center -ama "DEBE EJECUTAR DESDE EL USUARIO ROOT"
+  print_center -ama "DEVE EJECUTAR DESDE EL USUSRIO ROOT"
   msg -bar
   CTRL_C
 fi
@@ -28,15 +28,15 @@ ADM_inst="${ADMRufu}/install" && [[ ! -d ${ADM_inst} ]] && mkdir ${ADM_inst}
 tmp="${ADMRufu}/tmp" && [[ ! -d ${tmp} ]] && mkdir ${tmp}
 SCPinstal="$HOME/install"
 
-# rm -rf /etc/localtime &>/dev/null
-# ln -s /usr/share/zoneinfo/America/Argentina/Tucuman /etc/localtime &>/dev/null
+#rm -rf /etc/localtime &>/dev/null
+#ln -s /usr/share/zoneinfo/America/Argentina/Tucuman /etc/localtime &>/dev/null
 cp -f $0 ${ADMRufu}/install.sh
 rm $(pwd)/$0 &> /dev/null
 
 stop_install(){
   title "INSTALACION CANCELADA"
   exit
-}
+ }
 
 time_reboot(){
   print_center -ama "REINICIANDO VPS EN $1 SEGUNDOS"
@@ -217,28 +217,32 @@ userWG.sh
 v2ray.sh
 wireguard.sh
 ws-cdn.sh
-WS-Proxy.js'
+WS-Proxy.js
+WSREv.sh'
 
-lisArq="https://raw.githubusercontent.com/rudi9999/ADMRufu/main/old"
+[[ ! -d ${SCPinstal} ]] && mkdir ${SCPinstal}
 
-ver=$(curl -sSL "https://raw.githubusercontent.com/rudi9999/ADMRufu/main/vercion")
-echo "$ver" > ${ADMRufu}/vercion
-echo -e "Idioma=es_ES.utf8\nRutaLocales=locale" > ${ADMRufu}/lang.ini
-
-title -ama '[Proyect by @Rufu99]'
-
-[[ ! -e ${SCPinstal} ]] && mkdir ${SCPinstal}
 for arqx in $arch; do
-  wget -O ${SCPinstal}/$arqx ${lisArq}/${arqx} &>/dev/null || error_fun
-  verificar_arq "$arqx"
-  msg -verm " $arqx" && msg -verd "..........INSTALADO"
-done
+  msg -ne "."
 
-echo -e "[*][*][*][*][*][*][*][*][*][*][*]"
-echo -e " [*] INSTALADO CON EXITO [*]"
-echo -e "[*][*][*][*][*][*][*][*][*][*][*]"
-echo "menu" > /usr/bin/adm
-chmod +x /usr/bin/adm
-[[ -d ${SCPinstal} ]] && rm -rf ${SCPinstal}
+  if ! wget --no-check-certificate -O ${SCPinstal}/${arqx} "https://raw.githubusercontent.com/rudi9999/ADMRufu/main/${arqx}" &>/dev/null ; then
+    error_fun
+  fi
+  verificar_arq "${arqx}"
+done
+rm -rf ${SCPinstal}
+msg -verd "  - VERIFICADO"
+
+#cp -f /etc/ADMRufu/bashrc /etc/bash.bashrc &>/dev/null
+cd ${ADM_inst}
+
+[[ -e ${ADM_inst}/message.txt ]] && print_center -azu "$(cat ${ADM_inst}/message.txt)"
+
+msg -bar3
+print_center -ama "Perfecto, continuemos con la instalacion"
+msg -bar3
+rm ${ADMRufu}/install.sh
+print_center -verd "INSTALADO CON EXITO"
+msg -bar
 enter
 menu
