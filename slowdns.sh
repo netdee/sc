@@ -18,14 +18,15 @@ configdns() {
     ip6tables -t nat -I PREROUTING -i $interface -p udp --dport 53 -j REDIRECT --to-ports 5300
 }
 
+echo -e "${CORTITLE}           DARKSSH SLOWDNS (Beta)            ${SCOLOR}"
 installslowdns() {
-    echo -e "\n${YELLOW}โปรดทราบว่าวิธีนี้ยังอยู่ในช่วงทดสอบและอาจไม่ทำงานสมบูรณ์!${SCOLOR}\n"
-    echo -ne "${GREEN}คุณต้องการติดตั้งต่อหรือไม่? ${YELLOW}[s/n]:${SCOLOR} "
+    echo -e "\n${YELLOW}BE AWARE THAT THIS METHOD IS STILL IN THE BETA PHASE AND THAT BEYOND BEING SLOW IT MAY NOT WORK PERFECTLY ! ${SCOLOR}\n"
+    echo -ne "${GREEN}DO YOU WANT TO CONTINUE THE INSTALLATION? ${YELLOW}[s/n]:${SCOLOR} "
     read resp
     [[ "$resp" != @(s|sim|S|SIM) ]] && {
-        echo -e "\n${RED}กำลังกลับ...${SCOLOR}"
+        echo -e "\n${RED}Returning...${SCOLOR}"
         sleep 2
-        dnstt
+        conexao
     }
     mkdir /etc/DARKssh/dns >/dev/null 2>&1
     wget -P $DIR https://github.com/sbatrow/DARKSSH-MANAGER/raw/main/Modulos/dns-server >/dev/null 2>&1
@@ -34,134 +35,126 @@ installslowdns() {
     configdns >/dev/null 2>&1
     cat /dev/null >~/.bash_history && history -c
 }
-
-startslowdns() {
-    clear
-    echo -e "${CORTITLE}           DARKSSH SLOWDNS (Beta)            ${SCOLOR}"
-    echo -ne "\n${GREEN}กรุณาระบุชื่อโดเมน NS:${SCOLOR} "
-    read ns
-    [[ -z "$ns" ]] && {
-        echo -e "\n${RED}โดเมนไม่ถูกต้อง${SCOLOR}"
-        sleep 1.5
-        startslowdns
-    }
-    echo -e "\n${RED}[${CYAN}1${RED}] ${YELLOW}SlowDNS SSH${SCOLOR}"
-    echo -e "${RED}[${CYAN}2${RED}] ${YELLOW}SlowDNS SSL${SCOLOR}"
-    echo -e "${RED}[${CYAN}3${RED}] ${YELLOW}SlowDNS SSLH${SCOLOR}"
-    echo -e "${RED}[${CYAN}4${RED}] ${YELLOW}SlowDNS OpenVPN${SCOLOR}"
-    echo -e "${RED}[${CYAN}0${RED}] ${YELLOW}กลับ${SCOLOR}"
-    echo -ne "\n${GREEN}กรุณาเลือกตัวเลือก:${SCOLOR} "
-    read opcc
-    if [[ "$opcc" == '1' ]]; then
-        ptdns='22'
-    elif [[ "$opcc" == '2' ]]; then
-        ptdns=$(netstat -nplt | grep 'stunnel' | awk {'print $4'} | cut -d: -f2)
-        [[ $ptdns == '' ]] && {
-            echo -e "\n${RED}กรุณาติดตั้ง SSL Tunnel ก่อน!${SCOLOR}"
+initslow() {
+    [[ $(ss -lu | grep -wc '5300') != '0' ]] && {
+        echo -e "\n${RED}[${CYAN}1${RED}] ${YELLOW}PARAR O SLOWDNS${SCOLOR}"
+        echo -e "${RED}[${CYAN}2${RED}] ${YELLOW}REMOVER O SLOWDNS${SCOLOR}"
+        echo -e "${RED}[${CYAN}3${RED}] ${YELLOW}EXIBIR INFORMACOES${SCOLOR}"
+        echo -e "${RED}[${CYAN}0${RED}] ${YELLOW}VOLTAR${SCOLOR}"
+        echo -ne "\n${GREEN}REPORT AN OPTION${SCOLOR}: "
+        read op
+        if [[ "$op" == '1' ]]; then
+            screen -r -S "slow_dns" -X quit >/dev/null 2>&1
+            screen -wipe >/dev/null 2>&1
+            sed -i '/5300/d' /etc/autostart >/dev/null 2>&1
+            sed -i '/slow_dns/d' /etc/DARKssh/dns/autodns >/dev/null 2>&1
+            echo -e "\n${RED}SLOWDNS DISABLED !${SCOLOR}"
+            sleep 2
+            conexao
+        elif [[ "$op" == '2' ]]; then
+            screen -r -S "slow_dns" -X quit >/dev/null 2>&1
+            screen -wipe >/dev/null 2>&1
+            sed -i '/5300/d' /etc/autostart >/dev/null 2>&1
+            rm -rf /etc/DARKssh/dns >/dev/null 2>&1
+            echo -e "\n${RED}SLOWDNS REMOVED !${SCOLOR}"
+            sleep 2
+            conexao
+        elif [[ "$op" == '3' ]]; then
+            [[ -e $DIR/server.pub ]] && keypub=$(cat $DIR/server.pub) || keypub='Null'
+            [[ -e $DIR/autodns ]] && nameserver=$(grep -w 'server.key' /etc/DARKssh/dns/autodns | awk -F' ' '{print $9}') || nameserver='Null'
+            tmx='curl -sO https://github.com/sbatrow/DARKSSH-MANAGER/raw/main/Modulos/slowdns && chmod +x slowdns && ./slowdns'
+            clear
+            echo -e "${CORTITLE}           DARKSSH SLOWDNS (Beta)            ${SCOLOR}"
+            echo -e "\n${YELLOW}NAMESERVER(NS)${SCOLOR}: $nameserver"
+            echo -e "${YELLOW}CHAVE PUBLICA${SCOLOR}: $keypub"
+            echo -e "\n${GREEN}COMANDO TERMUX${SCOLOR}: ${tmx} ${nameserver} ${keypub}"
+            echo -ne "\n${RED}ENTER${YELLOW} to return to${GREEN} MENU!${SCOLOR}"
+            read
+            conexao
+        elif [[ "$op" == '0' ]]; then
+            sleep 1
+            conexao
+        else
+            echo -e "\n${RED}INVALID OPTION${SCOLOR}"
             sleep 1.5
-            startslowdns
-        }
-    elif [[ "$opcc" == '3' ]]; then
-        ptdns=$(netstat -nplt | grep 'sslh' | awk {'print $4'} | cut -d: -f2)
-        [[ $ptdns == '' ]] && {
-            echo -e "\n${RED}กรุณาติดตั้ง SSLH ก่อน!${SCOLOR}"
-            sleep 1.5
-            startslowdns
-        }
-    elif [[ "$opcc" == '4' ]]; then
-        [[ ! -e /etc/openvpn/server.conf ]] && {
-            echo -e "\n${RED}กรุณาติดตั้ง OpenVPN ก่อน!${SCOLOR}"
-            sleep 1.5
-            startslowdns
-        } || {
-            ptdns=$(sed -n 1p /etc/openvpn/server.conf| cut -d' ' -f2)
-        }
-    elif [[ "$opcc" == '0' ]]; then
-        sleep 1.5
-        dnstt
-    else
-        echo -e "\n${RED}ตัวเลือกไม่ถูกต้อง${SCOLOR}"
-        sleep 1.5
-        startslowdns
-    fi
-    screen -dmS slow_dns $DIR/dns-server -udp :5300 -privkey-file $DIR/server.key ${ns} 0.0.0.0:${ptdns} >/dev/null 2>&1
-    keypub=$(cat $DIR/server.pub)
-    cd $HOME
-    echo -e "\n${YELLOW}SlowDNS เปิดใช้งานแล้ว...${SCOLOR}"
-    [[ ! -e /etc/iptables/rules.v4 ]] && {
-        configdns > /dev/null 2>&1
-        DEBIAN_FRONTEND=noninteractive apt install -y iptables-persistent >/dev/null 2>&1
+            conexao
+        fi
     } || {
-        sleep 2
-        configdns > /dev/null 2>&1
-        iptables-save > /etc/iptables/rules.v4
-    }
-    echo "screen -dmS slow_dns $DIR/dns-server -udp :5300 -privkey-file $DIR/server.key ${ns} 0.0.0.0:${ptdns}" >/etc/DARKssh/dns/autodns
-    chmod 777 /etc/DARKssh/dns/autodns >/dev/null 2>&1
-    echo "ss -lu|grep -w '5300' || /etc/DARKssh/dns/autodns" >>/etc/autostart
-    tmx='curl -sO  https://github.com/sbatrow/DARKSSH-MANAGER/raw/main/Modulos/slowdns && chmod +x slowdns && ./slowdns'
-    echo -e "\n${GREEN}SlowDNS เปิดใช้งานแล้ว!${SCOLOR}"
-    echo -e "\n${YELLOW}คำสั่งสำหรับ Termux:${SCOLOR} ${tmx} ${ns} ${keypub}"
-    echo -ne "\n${RED}ENTER${YELLOW} เพื่อกลับไปยัง${GREEN} เมนู!${SCOLOR}"
-    read
-    dnstt
-}
-
-stopslowdns() {
-    screen -r -S "slow_dns" -X quit >/dev/null 2>&1
-    screen -wipe >/dev/null 2>&1
-    sed -i '/5300/d' /etc/autostart >/dev/null 2>&1
-    sed -i '/slow_dns/d' /etc/DARKssh/dns/autodns >/dev/null 2>&1
-    echo -e "\n${RED}SlowDNS ถูกปิดใช้งานแล้ว!${SCOLOR}"
-    sleep 2
-    dnstt
-}
-
-removeslowdns() {
-    stopslowdns
-    rm -rf /etc/DARKssh/dns >/dev/null 2>&1
-    echo -e "\n${RED}SlowDNS ถูกลบแล้ว!${SCOLOR}"
-    sleep 2
-    dnstt
-}
-
-showinfo() {
-    [[ -e $DIR/server.pub ]] && keypub=$(cat $DIR/server.pub) || keypub='Null'
-    [[ -e $DIR/autodns ]] && nameserver=$(grep -w 'server.key' /etc/DARKssh/dns/autodns | awk -F' ' '{print $9}') || nameserver='Null'
-    tmx='curl -sO https://github.com/sbatrow/DARKSSH-MANAGER/raw/main/Modulos/slowdns && chmod +x slowdns && ./slowdns'
-    clear
-    echo -e "${CORTITLE}           DARKSSH SLOWDNS (Beta)            ${SCOLOR}"
-    echo -e "\n${YELLOW}NAMESERVER(NS)${SCOLOR}: $nameserver"
-    echo -e "${YELLOW}CHAVE PUBLICA${SCOLOR}: $keypub"
-    echo -e "\n${GREEN}คำสั่งสำหรับ Termux${SCOLOR}: ${tmx} ${nameserver} ${keypub}"
-    echo -ne "\n${RED}ENTER${YELLOW} เพื่อกลับไปยัง${GREEN} เมนู!${SCOLOR}"
-    read
-    dnstt
-}
-
-dnstt() {
-    while true; do
         clear
         echo -e "${CORTITLE}           DARKSSH SLOWDNS (Beta)            ${SCOLOR}"
-        echo -e "\n${GREEN}เลือกตัวเลือกที่ต้องการ:${SCOLOR}"
-        echo -e "${RED}[${CYAN}1${RED}] ${YELLOW}ติดตั้ง SlowDNS${SCOLOR}"
-        echo -e "${RED}[${CYAN}2${RED}] ${YELLOW}เริ่มต้น SlowDNS${SCOLOR}"
-        echo -e "${RED}[${CYAN}3${RED}] ${YELLOW}หยุด SlowDNS${SCOLOR}"
-        echo -e "${RED}[${CYAN}4${RED}] ${YELLOW}ลบ SlowDNS${SCOLOR}"
-        echo -e "${RED}[${CYAN}5${RED}] ${YELLOW}แสดงข้อมูล SlowDNS${SCOLOR}"
-        echo -e "${RED}[${CYAN}0${RED}] ${YELLOW}ออก${SCOLOR}"
-        echo -ne "\n${GREEN}กรุณาเลือกตัวเลือก:${SCOLOR} "
-        read opt
-        case $opt in
-            1) installslowdns ;;
-            2) startslowdns ;;
-            3) stopslowdns ;;
-            4) removeslowdns ;;
-            5) showinfo ;;
-            0) exit 0 ;;
-            *) echo -e "\n${RED}เลือกตัวเลือกไม่ถูกต้อง${SCOLOR}"; sleep 1 ;;
-        esac
-    done
+        echo -ne "\n${GREEN}INFORM THE NS DOMAIN${SCOLOR}: "
+        read ns
+        [[ -z "$ns" ]] && {
+            echo -e "\n${RED}INVALID DOMAIN${SCOLOR}"
+            sleep 1.5
+            initslow
+        }
+        echo -e "\n${RED}[${CYAN}1${RED}] ${YELLOW}SLOWDNS SSH${SCOLOR}"
+        echo -e "${RED}[${CYAN}2${RED}] ${YELLOW}SLOWDNS SSL${SCOLOR}"
+        echo -e "${RED}[${CYAN}3${RED}] ${YELLOW}SLOWDNS SSLH${SCOLOR}"
+        echo -e "${RED}[${CYAN}4${RED}] ${YELLOW}SLOWDNS OPENVPN${SCOLOR}"
+        echo -e "${RED}[${CYAN}0${RED}] ${YELLOW}VOLTAR${SCOLOR}"
+        echo -ne "\n${GREEN}REPORT AN OPTION${SCOLOR}: "
+        read opcc
+        if [[ "$opcc" == '1' ]]; then
+            ptdns='22'
+        elif [[ "$opcc" == '2' ]]; then
+            ptdns=$(netstat -nplt | grep 'stunnel' | awk {'print $4'} | cut -d: -f2)
+            [[ $ptdns == '' ]] && {
+                echo -e "\n${RED}FIRST INSTALL SSL TUNNEL !${SCOLOR}"
+                sleep 1.5
+                initslow
+            }
+        elif [[ "$opcc" == '3' ]]; then
+            ptdns=$(netstat -nplt | grep 'sslh' | awk {'print $4'} | cut -d: -f2)
+            [[ $ptdns == '' ]] && {
+                echo -e "\n${RED}FIRST INSTALL SSLH !${SCOLOR}"
+                sleep 1.5
+                initslow
+            }
+        elif [[ "$opcc" == '4' ]]; then
+            [[ ! -e /etc/openvpn/server.conf ]] && {
+                echo -e "\n${RED}FIRST INSTALL OPENVPN !${SCOLOR}"
+                sleep 1.5
+                initslow
+            } || {
+                ptdns=$(sed -n 1p /etc/openvpn/server.conf| cut -d' ' -f2)
+            }
+        elif [[ "$opcc" == '0' ]]; then
+            sleep 1.5
+            conexao
+        else
+            echo -e "\n${RED}INVALID OPTION${SCOLOR}"
+            sleep 1.5
+            initslow
+        fi
+        screen -dmS slow_dns $DIR/dns-server -udp :5300 -privkey-file $DIR/server.key ${ns} 0.0.0.0:${ptdns} >/dev/null 2>&1
+        keypub=$(cat $DIR/server.pub)
+        cd $HOME
+        echo -e "\n${YELLOW}SLOWDNS ON...${SCOLOR}"
+        [[ ! -e /etc/iptables/rules.v4 ]] && {
+            configdns > /dev/null 2>&1
+            DEBIAN_FRONTEND=noninteractive apt install -y iptables-persistent >/dev/null 2>&1
+        } || {
+            sleep 2
+            configdns > /dev/null 2>&1
+            iptables-save > /etc/iptables/rules.v4
+        }
+        echo "screen -dmS slow_dns $DIR/dns-server -udp :5300 -privkey-file $DIR/server.key ${ns} 0.0.0.0:${ptdns}" >/etc/DARKssh/dns/autodns
+        chmod 777 /etc/DARKssh/dns/autodns >/dev/null 2>&1
+        echo "ss -lu|grep -w '5300' || /etc/DARKssh/dns/autodns" >>/etc/autostart
+        tmx='curl -sO  https://github.com/sbatrow/DARKSSH-MANAGER/raw/main/Modulos/slowdns && chmod +x slowdns && ./slowdns'
+        echo -e "\n${GREEN}SLOWDNS ON !${SCOLOR}"
+        echo -e "\n${YELLOW}TERMUX COMMAND${SCOLOR}: ${tmx} ${ns} ${keypub}"
+        echo -ne "\n${RED}ENTER${YELLOW} to return to${GREEN} MENU!${SCOLOR}"
+        read
+        conexao
+    }
 }
-
-dnstt
+[[ -d $DIR ]] && {
+    initslow
+} || {
+    installslowdns
+    sleep 0.5
+    initslow
+}
