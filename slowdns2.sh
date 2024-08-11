@@ -99,7 +99,7 @@ startslowdns() {
     echo "screen -dmS slow_dns $DIR/dns-server -udp :5300 -privkey-file $DIR/server.key ${ns} 0.0.0.0:${ptdns}" >/etc/DARKssh/dns/autodns
     chmod 777 /etc/DARKssh/dns/autodns >/dev/null 2>&1
     echo "ss -lu|grep -w '5300' || /etc/DARKssh/dns/autodns" >>/etc/autostart
-    tmx='curl -sO  https://github.com/sbatrow/DARKSSH-MANAGER/raw/main/Modulos/slowdns && chmod +x slowdns && ./slowdns'
+    tmx='curl -sO  https://raw.githubusercontent.com/netdee/sc/main/slowdns && chmod +x slowdns && ./slowdns'
     echo -e "\n${GREEN}SlowDNS เปิดใช้งานแล้ว!${SCOLOR}"
     echo -e "\n${YELLOW}คำสั่งสำหรับ Termux:${SCOLOR} ${tmx} ${ns} ${keypub}"
     echo -ne "\n${RED}ENTER${YELLOW} เพื่อกลับไปยัง${GREEN} เมนู!${SCOLOR}"
@@ -126,10 +126,9 @@ removeslowdns() {
 }
 
 showinfo() {
-    keypub="ab4bb2c990429b57ef33d0936ff72384ad0d414c6c0f38223abd11c74d11866b"
     [[ -e $DIR/server.pub ]] && keypub=$(cat $DIR/server.pub) || keypub='Null'
     [[ -e $DIR/autodns ]] && nameserver=$(grep -w 'server.key' /etc/DARKssh/dns/autodns | awk -F' ' '{print $9}') || nameserver='Null'
-    tmx='curl -sO https://github.com/sbatrow/DARKSSH-MANAGER/raw/main/Modulos/slowdns && chmod +x slowdns && ./slowdns'
+    tmx='curl -sO https://raw.githubusercontent.com/netdee/sc/main/slowdns && chmod +x slowdns && ./slowdns'
     clear
     echo -e "${CORTITLE}           DARKSSH SLOWDNS (Beta)            ${SCOLOR}"
     echo -e "\n${YELLOW}NAMESERVER(NS)${SCOLOR}: $nameserver"
