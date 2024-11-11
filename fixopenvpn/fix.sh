@@ -7,6 +7,7 @@ SCRIPT_URL="https://raw.githubusercontent.com/netdee/sc/refs/heads/main/fixopenv
 # ตำแหน่งที่ตั้งของไฟล์ในเซิร์ฟเวอร์
 CONFIG_FILE="/etc/openvpn/server.conf"
 SCRIPT_FILE="/etc/TH-VPN/open.py"
+APACHE_PORTS_CONF="/etc/apache2/ports.conf"
 
 # ฟังก์ชันสำหรับสำรองและแทนที่ไฟล์
 download_and_replace() {
@@ -39,13 +40,47 @@ download_and_replace() {
     fi
 }
 
+# แก้ไขพอร์ตในไฟล์ /etc/apache2/ports.conf
+update_apache_port() {
+    echo "Updating Apache ports.conf to listen on port 82..."
+    
+    # สำรองไฟล์เดิม
+    if [ -f "$APACHE_PORTS_CONF" ]; then
+        cp "$APACHE_PORTS_CONF" "${APACHE_PORTS_CONF}.backup"
+        echo "Backup created at ${APACHE_PORTS_CONF}.backup"
+    else
+        echo "No existing Apache configuration found. Proceeding without backup."
+    fi
+
+    # แก้ไขพอร์ตในไฟล์ /etc/apache2/ports.conf
+    sed -i 's/^Listen .*/Listen 82/' "$APACHE_PORTS_CONF"
+    
+    # ตรวจสอบว่าการแก้ไขสำเร็จหรือไม่
+    if [ $? -eq 0 ]; then
+        echo "Apache port updated to 82 successfully."
+    else
+        echo "Failed to update the Apache port."
+        # คืนค่าจากไฟล์สำรองถ้าการแก้ไขล้มเหลว
+        if [ -f "${APACHE_PORTS_CONF}.backup" ]; then
+            mv "${APACHE_PORTS_CONF}.backup" "$APACHE_PORTS_CONF"
+            echo "The original Apache configuration has been restored from backup."
+        fi
+        exit 1
+    fi
+}
+
 # เรียกใช้งานฟังก์ชันสำหรับแต่ละไฟล์
 download_and_replace "$CONFIG_URL" "$CONFIG_FILE"
 download_and_replace "$SCRIPT_URL" "$SCRIPT_FILE"
 
+# แก้ไขพอร์ตของ Apache
+update_apache_port
+
 # รีสตาร์ทบริการที่ต้องการ
-echo "Restarting SSH, OpenVPN, and SSL services..."
+echo "Restarting SSH, OpenVPN, SSL, and Apache services..."
 systemctl restart ssh
 systemctl restart openvpn
 systemctl restart stunnel4  # SSL service (assuming stunnel4 is used for SSL)
+systemctl restart apache2   # Restart Apache service to apply the port change
+
 echo "Services have been restarted successfully."
