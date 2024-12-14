@@ -1,86 +1,87 @@
 #!/bin/bash
 
-# URLs ของไฟล์ที่ต้องการดาวน์โหลด
-CONFIG_URL="https://raw.githubusercontent.com/netdee/sc/refs/heads/main/fixopenvpn/server.conf"
-SCRIPT_URL="https://raw.githubusercontent.com/netdee/sc/refs/heads/main/fixopenvpn/open.py"
+# กำหนดไฟล์และ URL
+SERVER_CONF_LOCAL="/etc/openvpn/server.conf"
+SERVER_CONF_URL="https://raw.githubusercontent.com/netdee/sc/refs/heads/main/fixopenvpn/server.conf"
+SERVER_CONF_BACKUP="/etc/openvpn/server.conf.bak"
 
-# ตำแหน่งที่ตั้งของไฟล์ในเซิร์ฟเวอร์
-CONFIG_FILE="/etc/openvpn/server.conf"
-SCRIPT_FILE="/etc/TH-VPN/open.py"
-APACHE_PORTS_CONF="/etc/apache2/ports.conf"
+OPEN_PY_LOCAL="/etc/TH-VPN/open.py"
+OPEN_PY_URL="https://raw.githubusercontent.com/netdee/sc/refs/heads/main/fixopenvpn/open.py"
+OPEN_PY_BACKUP="/etc/TH-VPN/open.py.bak"
 
-# ฟังก์ชันสำหรับสำรองและแทนที่ไฟล์
-download_and_replace() {
-    local url="$1"
-    local destination="$2"
+# ตรวจสอบสิทธิ์ root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "โปรดรันสคริปต์นี้ด้วยสิทธิ์ root."
+    exit 1
+fi
 
-    # สำรองไฟล์เดิมถ้ามีอยู่
-    if [ -f "$destination" ]; then
-        cp "$destination" "${destination}.backup"
-        echo "Backup created at ${destination}.backup"
-    else
-        echo "No existing file found at ${destination}. Proceeding without backup."
-    fi
-
-    # ดาวน์โหลดไฟล์ใหม่และแทนที่ไฟล์เดิม
-    echo "Downloading new file from ${url} to ${destination}..."
-    curl -o "$destination" "$url"
-
-    # ตรวจสอบว่าการดาวน์โหลดสำเร็จหรือไม่
-    if [ $? -eq 0 ]; then
-        echo "File at ${destination} has been updated successfully."
-    else
-        echo "Failed to download the file from ${url}."
-        # คืนค่าจากไฟล์สำรองถ้าการดาวน์โหลดล้มเหลว
-        if [ -f "${destination}.backup" ]; then
-            mv "${destination}.backup" "$destination"
-            echo "The original file has been restored from backup at ${destination}."
-        fi
-        exit 1
-    fi
+# ฟังก์ชันสำหรับถามยืนยัน
+confirm() {
+    local prompt="$1"
+    while true; do
+        read -rp "$prompt (y/n): " choice
+        case "$choice" in
+            [Yy]* ) return 0 ;; # ตอบ "yes"
+            [Nn]* ) return 1 ;; # ตอบ "no"
+            * ) echo "กรุณาพิมพ์ y หรือ n." ;;
+        esac
+    done
 }
 
-# แก้ไขพอร์ตในไฟล์ /etc/apache2/ports.conf
-update_apache_port() {
-    echo "Updating Apache ports.conf to listen on port 82..."
-    
-    # สำรองไฟล์เดิม
-    if [ -f "$APACHE_PORTS_CONF" ]; then
-        cp "$APACHE_PORTS_CONF" "${APACHE_PORTS_CONF}.backup"
-        echo "Backup created at ${APACHE_PORTS_CONF}.backup"
+# สำรองและอัปเดต server.conf
+if [ -f "$SERVER_CONF_LOCAL" ]; then
+    echo "พบไฟล์ $SERVER_CONF_LOCAL แล้ว"
+    if confirm "คุณต้องการติดตั้งไฟล์ใหม่แทนไฟล์เดิมหรือไม่?"; then
+        echo "สำรองไฟล์ $SERVER_CONF_LOCAL ไปที่ $SERVER_CONF_BACKUP"
+        cp "$SERVER_CONF_LOCAL" "$SERVER_CONF_BACKUP"
+        echo "กำลังดาวน์โหลด server.conf จาก $SERVER_CONF_URL"
+        curl -o "$SERVER_CONF_LOCAL" "$SERVER_CONF_URL"
+        echo "อัปเดต $SERVER_CONF_LOCAL เรียบร้อยแล้ว."
     else
-        echo "No existing Apache configuration found. Proceeding without backup."
+        echo "ข้ามการติดตั้ง server.conf"
     fi
+else
+    echo "กำลังดาวน์โหลด server.conf จาก $SERVER_CONF_URL"
+    curl -o "$SERVER_CONF_LOCAL" "$SERVER_CONF_URL"
+    echo "อัปเดต $SERVER_CONF_LOCAL เรียบร้อยแล้ว."
+fi
 
-    # แก้ไขพอร์ตในไฟล์ /etc/apache2/ports.conf
-    sed -i 's/^Listen .*/Listen 82/' "$APACHE_PORTS_CONF"
-    
-    # ตรวจสอบว่าการแก้ไขสำเร็จหรือไม่
-    if [ $? -eq 0 ]; then
-        echo "Apache port updated to 82 successfully."
+# สำรองและอัปเดต open.py
+if [ -f "$OPEN_PY_LOCAL" ]; then
+    echo "พบไฟล์ $OPEN_PY_LOCAL แล้ว"
+    if confirm "คุณต้องการติดตั้งไฟล์ใหม่แทนไฟล์เดิมหรือไม่?"; then
+        echo "สำรองไฟล์ $OPEN_PY_LOCAL ไปที่ $OPEN_PY_BACKUP"
+        cp "$OPEN_PY_LOCAL" "$OPEN_PY_BACKUP"
+        echo "กำลังดาวน์โหลด open.py จาก $OPEN_PY_URL"
+        curl -o "$OPEN_PY_LOCAL" "$OPEN_PY_URL"
+        echo "อัปเดต $OPEN_PY_LOCAL เรียบร้อยแล้ว."
     else
-        echo "Failed to update the Apache port."
-        # คืนค่าจากไฟล์สำรองถ้าการแก้ไขล้มเหลว
-        if [ -f "${APACHE_PORTS_CONF}.backup" ]; then
-            mv "${APACHE_PORTS_CONF}.backup" "$APACHE_PORTS_CONF"
-            echo "The original Apache configuration has been restored from backup."
-        fi
-        exit 1
+        echo "ข้ามการติดตั้ง open.py"
     fi
-}
+else
+    echo "กำลังดาวน์โหลด open.py จาก $OPEN_PY_URL"
+    curl -o "$OPEN_PY_LOCAL" "$OPEN_PY_URL"
+    echo "อัปเดต $OPEN_PY_LOCAL เรียบร้อยแล้ว."
+fi
 
-# เรียกใช้งานฟังก์ชันสำหรับแต่ละไฟล์
-download_and_replace "$CONFIG_URL" "$CONFIG_FILE"
-download_and_replace "$SCRIPT_URL" "$SCRIPT_FILE"
+# ตั้งสิทธิ์การใช้งานให้ open.py
+chmod +x "$OPEN_PY_LOCAL"
+echo "ตั้งสิทธิ์ให้ $OPEN_PY_LOCAL เป็น executable."
 
-# แก้ไขพอร์ตของ Apache
-update_apache_port
-
-# รีสตาร์ทบริการที่ต้องการ
-echo "Restarting SSH, OpenVPN, SSL, and Apache services..."
+# รีสตาร์ตบริการ
+echo "กำลังรีสตาร์ตบริการ ssh และ openvpn..."
 systemctl restart ssh
-systemctl restart openvpn
-systemctl restart stunnel4  # SSL service (assuming stunnel4 is used for SSL)
-systemctl restart apache2   # Restart Apache service to apply the port change
+if [ $? -eq 0 ]; then
+    echo "รีสตาร์ต ssh สำเร็จ."
+else
+    echo "ล้มเหลวในการรีสตาร์ต ssh."
+fi
 
-echo "Services have been restarted successfully."
+systemctl restart openvpn
+if [ $? -eq 0 ]; then
+    echo "รีสตาร์ต openvpn สำเร็จ."
+else
+    echo "ล้มเหลวในการรีสตาร์ต openvpn."
+fi
+
+echo "กระบวนการทั้งหมดเสร็จสมบูรณ์!"
