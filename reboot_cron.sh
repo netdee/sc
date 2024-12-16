@@ -1,77 +1,57 @@
 #!/bin/bash
 
-# ฟังก์ชันเพื่อเพิ่มงาน cron
-add_cron_job() {
-    local cron_schedule="$1"
-    # ตรวจสอบว่ามีงาน cron นี้อยู่แล้วหรือไม่
-    if (crontab -l 2>/dev/null | grep -F "$cron_schedule" > /dev/null); then
-        echo "งาน cron นี้มีอยู่แล้ว."
-    else
-        echo "$cron_schedule" | crontab -
-        if [ $? -eq 0 ]; then
-            echo "ตั้งค่าการรีบูทระบบตามตาราง '$cron_schedule' เรียบร้อยแล้ว."
-        else
-            echo "ไม่สามารถตั้งค่างาน cron ได้."
-        fi
-    fi
-}
+# ตรวจสอบว่าสคริปต์ถูกรันด้วยสิทธิ์ root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "กรุณารันสคริปต์นี้ด้วยสิทธิ์ root (sudo)"
+    exit 1
+fi
 
-# แสดงเมนูให้ผู้ใช้เลือกวันและเวลา
-echo "กรุณากำหนดตารางเวลาในการรีบูทระบบ:"
-echo "1) ทุกวัน"
-echo "2) ทุกสัปดาห์ (เลือกวัน)"
-echo "3) ทุกเดือน (เลือกวันที่)"
-echo "4) ออกจากโปรแกรม"
+echo "=== ตั้งค่ารีบูต VPS อัตโนมัติ ==="
+echo "เลือกความถี่ที่ต้องการ:"
+echo "1) ทุกวันตอนตี 2"
+echo "2) ทุก 3 วันตอนตี 2"
+echo "3) ทุก 5 วันตอนตี 2"
+echo "4) ทุก 7 วันตอนตี 2"
+echo "5) ทุก 1 เดือนตอนตี 2"
+echo "6) ตั้งค่าตามเวลาที่ต้องการเอง"
+echo "--------------------------------"
+read -p "กรุณาเลือกหมายเลข [1-6]: " choice
 
-read -p "กรุณาเลือกตัวเลือก [1-4]: " choice
-
+# ตั้งค่าตามตัวเลือก
 case $choice in
     1)
-        # รีบูททุกวัน
-        read -p "กรุณากรอกเวลาที่ต้องการรีบูท (ในรูปแบบ HH:MM): " time
-        if [[ ! "$time" =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; then
-            echo "รูปแบบเวลาที่ป้อนผิดพลาด. ใช้ HH:MM."
-            exit 1
-        fi
-        CRON_SCHEDULE="0 ${time%:*} * * * /sbin/reboot"
-        add_cron_job "$CRON_SCHEDULE"
+        cron_time="0 2 * * *"
         ;;
     2)
-        # รีบูททุกสัปดาห์
-        read -p "กรุณาเลือกวันของสัปดาห์ (0=วันอาทิตย์, 1=วันจันทร์, ... 6=วันเสาร์): " day
-        if [[ ! "$day" =~ ^[0-6]$ ]]; then
-            echo "ตัวเลขวันของสัปดาห์ไม่ถูกต้อง."
-            exit 1
-        fi
-        read -p "กรุณากรอกเวลาที่ต้องการรีบูท (ในรูปแบบ HH:MM): " time
-        if [[ ! "$time" =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; then
-            echo "รูปแบบเวลาที่ป้อนผิดพลาด. ใช้ HH:MM."
-            exit 1
-        fi
-        CRON_SCHEDULE="0 ${time%:*} * * $day /sbin/reboot"
-        add_cron_job "$CRON_SCHEDULE"
+        cron_time="0 2 */3 * *"
         ;;
     3)
-        # รีบูททุกเดือน
-        read -p "กรุณาเลือกวันที่ของเดือน (1-31): " day
-        if [[ ! "$day" =~ ^[0-9]{1,2}$ ]] || [ "$day" -lt 1 ] || [ "$day" -gt 31 ]; then
-            echo "วันที่ไม่ถูกต้อง."
-            exit 1
-        fi
-        read -p "กรุณากรอกเวลาที่ต้องการรีบูท (ในรูปแบบ HH:MM): " time
-        if [[ ! "$time" =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; then
-            echo "รูปแบบเวลาที่ป้อนผิดพลาด. ใช้ HH:MM."
-            exit 1
-        fi
-        CRON_SCHEDULE="0 ${time%:*} $day * * /sbin/reboot"
-        add_cron_job "$CRON_SCHEDULE"
+        cron_time="0 2 */5 * *"
         ;;
     4)
-        echo "ออกจากโปรแกรม..."
-        exit 0
+        cron_time="0 2 */7 * *"
+        ;;
+    5)
+        cron_time="0 2 1 * *"
+        ;;
+    6)
+        read -p "กรุณากรอกนาที (0-59): " minute
+        read -p "กรุณากรอกชั่วโมง (0-23): " hour
+        read -p "กรุณากรอกวันในเดือน (1-31, ใส่ * ถ้าต้องการทุกวัน): " day
+        read -p "กรุณากรอกเดือน (1-12, ใส่ * ถ้าต้องการทุกเดือน): " month
+        read -p "กรุณากรอกวันในสัปดาห์ (0-7, ใส่ * ถ้าต้องการทุกวัน): " weekday
+        cron_time="$minute $hour $day $month $weekday"
         ;;
     *)
-        echo "ตัวเลือกไม่ถูกต้อง ออกจากโปรแกรม..."
+        echo "ตัวเลือกไม่ถูกต้อง! กรุณารันสคริปต์ใหม่"
         exit 1
         ;;
 esac
+
+# เพิ่มงานใน crontab
+echo "กำลังตั้งค่า Cron..."
+(crontab -l 2>/dev/null; echo "$cron_time /sbin/reboot") | crontab -
+
+# แสดงผล Cron jobs ที่ตั้งค่า
+echo "ตั้งค่าเรียบร้อยแล้ว! ตรวจสอบ Cron jobs ที่ตั้งไว้:"
+crontab -l
