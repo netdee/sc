@@ -10,19 +10,6 @@ echo ""
 echo "กำลังเริ่มต้นการติดตั้ง กรุณารอสักครู่..."
 sleep 3  # หน่วงเวลาให้ผู้ใช้ได้เห็นเครดิต
 
-# ติดตั้ง Apache2 และทำการตั้งค่าพอร์ตเป็น 82
-sudo apt update
-sudo apt install apache2 -y
-sudo sed -i 's/Listen 80/Listen 82/' /etc/apache2/ports.conf
-
-# แก้ไข VirtualHost ในไฟล์คอนฟิกของ Apache2
-sudo bash -c 'cat <<EOF > /etc/apache2/sites-available/000-default.conf
-<VirtualHost *:82>
-    DocumentRoot /var/www/html
-    ErrorLog ${APACHE_LOG_DIR}/error.log
-    CustomLog ${APACHE_LOG_DIR}/access.log combined
-</VirtualHost>
-EOF'
 
 # สร้างไดเรกทอรีและเปลี่ยนเจ้าของเป็นผู้ใช้ปัจจุบัน
 sudo mkdir -p /var/www/html/server
